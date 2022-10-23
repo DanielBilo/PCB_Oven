@@ -1,7 +1,12 @@
-#ifndef PmodTC1_h
+/*#ifndef PmodTC1_h
 #define PmodTC1_h
 
 void Myfunc(int *val);
 
+int readTemperature();
+{
+    
+}
 
-#endif
+
+#endif*/
