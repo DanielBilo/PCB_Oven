@@ -96,7 +96,7 @@ void setup()
   P5.time_ms = 280000;
 
   P6.temp = 235;
-  P7.time_ms = 310000;
+  P6.time_ms = 310000;
 
   P7.temp = 235;
   P7.time_ms = 360000;
