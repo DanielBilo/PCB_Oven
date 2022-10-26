@@ -96,16 +96,16 @@ void setup()
   P5.time_ms = 280000;
 
   P6.temp = 235;
-  P7.time_ms = 340000;
-
-  P7.temp = 235;
   P7.time_ms = 310000;
 
+  P7.temp = 235;
+  P7.time_ms = 360000;
+
   P8.temp = 183;
-  P8.time_ms = 340000;
-  
+  P8.time_ms = 390000;
+
   P9.temp = 30;
-  P9.time_ms = 370000;
+  P9.time_ms = 420000;
 
 
 
@@ -155,6 +155,7 @@ void loop()
       Serial.println(Input);
       Serial.println(Setpoint);
       Serial.println(Output);
+      Serial.println(now - startTime);
     }
     i++;
     Input = thermocouple.readCelsius();
