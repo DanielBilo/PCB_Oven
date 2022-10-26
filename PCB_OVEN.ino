@@ -31,6 +31,7 @@
 
 #define CS 10 //chip select pin
 #define RelayPin 3 //SSR pin
+#define numChars 20 //number of characters to read
 
 // Call of libraries
 #include <SPI.h>
@@ -39,33 +40,75 @@
 
 Adafruit_MAX31855 thermocouple(CS); // Creation of the object
 
+int i = 0;
 struct Point {
   unsigned long time_ms;
   double temp;
-} P1, P2, P3, P4, P5, P6, P7;
+} P1, P2, P3, P4, P5, P6, P7, P8, P9;
 
+bool newData = false;
+bool running = false;
+char serialReceived[20];
 double Setpoint, Input, Output;
 int WindowSize = 5000;
 unsigned long windowStartTime, windowTime, now, startTime;
-PID myPID(&Input, &Output, &Setpoint, 2, 5, 1, DIRECT);
+PID myPID(&Input, &Output, &Setpoint, 80, 5, 10, DIRECT);
+
+void recvWithEndMarker(bool *flag, char *receivedChars) {
+    static byte ndx = 0;
+    char endMarker = '\n';
+    char rc;
+    
+    while (Serial.available() > 0 && *flag == false) {
+        rc = Serial.read();
+
+        if (rc != endMarker) {
+            receivedChars[ndx] = rc;
+            ndx++;
+            if (ndx >= numChars) {
+                ndx = numChars - 1;
+            }
+        }
+        else {
+            receivedChars[ndx] = '\0'; // terminate the string
+            ndx = 0;
+            *flag = true;
+        }
+    }
+}
 
 
 void setup()
 {
   P1.temp = 30;
   P1.time_ms = 0;
+
   P2.temp = 100;
-  P2.time_ms = 30000;
-  P3.temp = 150;
-  P3.time_ms = 120000;
-  P4.temp = 183;
-  P4.time_ms = 150000;
-  P5.temp = 235;
-  P5.time_ms = 210000;
-  P6.temp = 183;
-  P6.time_ms = 240000;
-  P7.temp = 30;
-  P7.time_ms = 250000;
+  P2.time_ms = 90000;
+
+  P3.temp = 100;
+  P3.time_ms = 130000;
+
+  P4.temp = 150;
+  P4.time_ms = 220000;
+
+  P5.temp = 183;
+  P5.time_ms = 280000;
+
+  P6.temp = 235;
+  P7.time_ms = 340000;
+
+  P7.temp = 235;
+  P7.time_ms = 310000;
+
+  P8.temp = 183;
+  P8.time_ms = 340000;
+  
+  P9.temp = 30;
+  P9.time_ms = 370000;
+
+
+
 
   Setpoint = P1.temp;
   
@@ -85,35 +128,58 @@ void setup()
   pinMode(RelayPin, OUTPUT);
 }
 
-unsigned int precision = 100;
-
-double x = 183156;
 void loop()
 {
-  now = millis();
-  Serial.println(Setpoint);
-  Input = thermocouple.readCelsius();
-  
-  windowTime = windowStartTime + Output;
-  if(updateSetpoint(startTime, &Setpoint)) {
-    myPID.Compute();
-    windowTime = windowStartTime + Output;
+  recvWithEndMarker(&newData, serialReceived);
+
+  if (newData) {
+    newData = false;
+    if (serialReceived[0] == 's') {
+      Serial.println("Detected Start");
+      running = true;
+      startTime = millis();
+      windowStartTime = millis();
+    }
+    else if (serialReceived[0] == 'e') {
+      Serial.println("Detected End");
+      running = false;
+      Setpoint = P1.temp;
+    }
   }
-  else
+  if(running)
   {
-    Output = 0;
-  }
-  if (windowTime >= WindowSize)
-  {
-    windowStartTime = millis();
-  }
-  if (now <= windowStartTime + windowTime)
-  {
-    digitalWrite(RelayPin, HIGH);
-  }
-  else
-  {
-    digitalWrite(RelayPin, LOW);
+    now = millis();
+    if(i >= 4000)
+    {
+      i = 0;
+      Serial.println(Input);
+      Serial.println(Setpoint);
+      Serial.println(Output);
+    }
+    i++;
+    Input = thermocouple.readCelsius();
+
+    if(updateSetpoint(startTime, &Setpoint)) {
+      myPID.Compute();
+      windowTime = windowStartTime + Output;
+    }
+    else
+    {
+      running = false;
+      Output = 0;
+    }
+    if (now >= windowStartTime + WindowSize)
+    {
+      windowStartTime = millis();
+    }
+    if ((now > windowStartTime) && (now < windowTime))
+    {
+      digitalWrite(RelayPin, HIGH);
+    }
+    else
+    {
+      digitalWrite(RelayPin, LOW);
+    }
   }
 }
 
@@ -143,9 +209,17 @@ bool updateSetpoint(unsigned long startTime, double *Setpoint)
   {
     *Setpoint = (P7.temp - P6.temp) / (P7.time_ms - P6.time_ms) * (now - (startTime + P6.time_ms)) + P6.temp;
   }
+  else if (now < startTime + P8.time_ms)
+  {
+    *Setpoint = (P8.temp - P7.temp) / (P8.time_ms - P7.time_ms) * (now - (startTime + P7.time_ms)) + P7.temp;
+  }
+  else if (now < startTime + P9.time_ms)
+  {
+    *Setpoint = (P9.temp - P8.temp) / (P9.time_ms - P8.time_ms) * (now - (startTime + P8.time_ms)) + P8.temp;
+  }
   else
   {
-    *Setpoint = P7.temp;
+    *Setpoint = P9.temp;
     return false;
   }
   return true;

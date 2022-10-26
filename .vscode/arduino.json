@@ -3,5 +3,5 @@
     "board": "arduino:avr:nano",
     "programmer": "arduino:avrispmkii",
     "sketch": "PCB_oven.ino",
-    "port": "COM4"
+    "port": "COM7"
 }
